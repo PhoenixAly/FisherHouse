@@ -199,11 +199,8 @@ header {
 .cal-day:hover { transform: scale(1.25); z-index: 5; }
 .cal-day.cal-today  { outline: 2px solid var(--creat); outline-offset: 1px; }
 .cal-day.cal-future { opacity: 0.2; pointer-events: none; }
+/* quadrants use inline gradient styles for fill-level; base = empty */
 .cal-q { background: rgba(255,255,255,0.04); }
-.cal-q.hit-cal   { background: rgba(255,107,53,0.82); }
-.cal-q.hit-water { background: rgba(6,214,240,0.82); }
-.cal-q.hit-creat { background: rgba(192,132,252,0.82); }
-.cal-q.hit-work  { background: rgba(16,232,122,0.82); }
 .cal-legend {
   display: flex; align-items: center; gap: 10px;
   margin-top: 10px; flex-wrap: wrap;
@@ -540,10 +537,11 @@ header {
         </div>
         <div class="cal-grid" id="calGrid"></div>
         <div class="cal-legend">
-          <span class="leg-item"><span class="leg-sq" style="background:rgba(255,107,53,0.82)"></span>🔥 Calories</span>
-          <span class="leg-item"><span class="leg-sq" style="background:rgba(6,214,240,0.82)"></span>💧 Water</span>
-          <span class="leg-item"><span class="leg-sq" style="background:rgba(192,132,252,0.82)"></span>💊 Creatine</span>
-          <span class="leg-item"><span class="leg-sq" style="background:rgba(16,232,122,0.82)"></span>💪 Workout</span>
+          <span class="leg-item"><span class="leg-sq" style="background:linear-gradient(to top,rgba(255,107,53,0.85) 100%,rgba(255,255,255,0.04) 100%)"></span>🔥 Cal</span>
+          <span class="leg-item"><span class="leg-sq" style="background:linear-gradient(to top,rgba(6,214,240,0.85) 100%,rgba(255,255,255,0.04) 100%)"></span>💧 Water</span>
+          <span class="leg-item"><span class="leg-sq" style="background:linear-gradient(to top,rgba(192,132,252,0.85) 100%,rgba(255,255,255,0.04) 100%)"></span>💊 Creatine</span>
+          <span class="leg-item"><span class="leg-sq" style="background:linear-gradient(to top,rgba(16,232,122,0.85) 100%,rgba(255,255,255,0.04) 100%)"></span>💪 Workout</span>
+          <span class="leg-item" style="margin-left:4px;font-style:italic">fills = % of goal</span>
         </div>
       </div>
     </div>
@@ -1074,20 +1072,31 @@ function renderCalendar() {
     const isFuture= d > today;
     const dayData  = dayMap[key] || { goalsHit: 0, hasEntry: false, cal: 0, water: 0, creat: 0, work: 0 };
     const active   = dayData.hasEntry && !isFuture;
-    const calHit   = active && dayData.cal   >= goals.calories;
-    const waterHit = active && dayData.water >= goals.water;
-    const creatHit = active && dayData.creat >= goals.creatine;
-    const workHit  = active && dayData.work  >= goals.workouts;
-    const label    = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    const tip      = dayData.hasEntry && !isFuture
-      ? `${label} · ${dayData.goalsHit}/4 goals  🔥${calHit?'✓':'✗'} 💧${waterHit?'✓':'✗'} 💊${creatHit?'✓':'✗'} 💪${workHit?'✓':'✗'}`
+
+    // % of each goal achieved, capped at 100
+    const calPct   = active && goals.calories > 0 ? Math.min(dayData.cal   / goals.calories,  1) * 100 : 0;
+    const waterPct = active && goals.water    > 0 ? Math.min(dayData.water / goals.water,     1) * 100 : 0;
+    const creatPct = active && goals.creatine > 0 ? Math.min(dayData.creat / goals.creatine,  1) * 100 : 0;
+    const workPct  = active && goals.workouts > 0 ? Math.min(dayData.work  / goals.workouts,  1) * 100 : 0;
+
+    // Gradient fills upward from bottom
+    function qStyle(pct, color) {
+      const p = pct.toFixed(1);
+      return pct > 0
+        ? `background:linear-gradient(to top,${color} ${p}%,rgba(255,255,255,0.04) ${p}%)`
+        : '';
+    }
+
+    const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const tip   = active
+      ? `${label} · 🔥${Math.round(calPct)}%  💧${Math.round(waterPct)}%  💊${Math.round(creatPct)}%  💪${Math.round(workPct)}%`
       : `${label}: No entries`;
 
     html += `<div class="cal-day${isToday ? ' cal-today' : ''}${isFuture ? ' cal-future' : ''}" title="${tip}">
-      <div class="cal-q${calHit   ? ' hit-cal'   : ''}"></div>
-      <div class="cal-q${waterHit ? ' hit-water' : ''}"></div>
-      <div class="cal-q${creatHit ? ' hit-creat' : ''}"></div>
-      <div class="cal-q${workHit  ? ' hit-work'  : ''}"></div>
+      <div class="cal-q" style="${qStyle(calPct,  'rgba(255,107,53,0.85)')}"></div>
+      <div class="cal-q" style="${qStyle(waterPct,'rgba(6,214,240,0.85)')}"></div>
+      <div class="cal-q" style="${qStyle(creatPct,'rgba(192,132,252,0.85)')}"></div>
+      <div class="cal-q" style="${qStyle(workPct, 'rgba(16,232,122,0.85)')}"></div>
     </div>`;
   }
   document.getElementById('calGrid').innerHTML = html;
